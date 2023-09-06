@@ -1,0 +1,47 @@
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+
+name: 7z-extra
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: checkout
+        uses: actions/checkout@v4
+      -
+        name: Config
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "GIT_TAGNAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          fi
+          ref=$(echo ${{ github.ref }} | sed -E -n -e 's/^refs\/[^/]*\/(.*)$/\1/p' | sed 's/\.*//g' )
+          echo "VERISON=$ref" >> $GITHUB_ENV
+      -
+        name: wget
+        run: |
+          wget https://www.7-zip.org/a/7z${{ env.VERISON }}-extra.7z
+      -
+        name: extra
+        uses: DuckSoft/extract-7z-action@v1.0
+        with:
+          pathSource: './*.7z'
+          pathTarget: './tmp'
+      -
+        name: archive
+        run: |
+          cd ./tmp
+          zip -9vr ../7z${{ env.VERISON }}-extra.zip .
+      -
+        name: release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ github.token }}
+          file: ./*.zip
+          tag: ${{ env.GIT_TAGNAME }}
+          overwrite: true
+          file_glob: true
+
